@@ -40,6 +40,12 @@ export interface Group {
   teacherId: number | null;
   teacher?: Teacher;
   schedule: string;
+  scheduleType: 'ODD' | 'EVEN';
+  attendanceToday?: {
+    presentStudents: number;
+    totalStudents: number;
+    percentage: number;
+  };
   students?: Student[];
   _count?: {
     students: number;
@@ -86,7 +92,16 @@ export interface DashboardStats {
   studentsCount: number;
   teachersCount: number;
   groupsCount: number;
-  attendancePercentage: number;
+  todayScheduleType: 'ODD' | 'EVEN' | null;
+  groupAttendance: {
+    groupId: number;
+    name: string;
+    scheduleType: 'ODD' | 'EVEN';
+    totalStudents: number;
+    presentStudents: number;
+    markedStudents: number;
+    percentage: number;
+  }[];
   statusCounts: {
     keldi: number;
     kelmadi: number;

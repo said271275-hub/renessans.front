@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, GraduationCap, Phone, BookOpen, Key } from 'lucide-react';
+import { Plus, Edit2, Trash2, GraduationCap, Phone, BookOpen, Key, Check } from 'lucide-react';
 import { api } from '../../api/client';
 import { Teacher } from '../../types';
 import { Table, Column } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+
+const subjectOptions = [
+  'Ingliz tili',
+  'IELTS',
+  'CEFR',
+  'Rus tili',
+  'Matematika',
+  'Koreys tili',
+  'Ona tili va adabiyot',
+];
 
 export const AdminTeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -21,7 +31,7 @@ export const AdminTeachersPage: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
-    subject: '',
+    subjects: [] as string[],
     login: '',
     password: '',
   });
@@ -49,7 +59,7 @@ export const AdminTeachersPage: React.FC = () => {
     setFormData({
       fullName: '',
       phone: '',
-      subject: '',
+      subjects: [],
       login: '',
       password: '',
     });
@@ -62,7 +72,7 @@ export const AdminTeachersPage: React.FC = () => {
     setFormData({
       fullName: teacher.user.fullName,
       phone: teacher.phone,
-      subject: teacher.subject,
+      subjects: subjectOptions.filter(subject => teacher.subject.includes(subject)),
       login: teacher.user.login,
       password: '',
     });
@@ -72,8 +82,8 @@ export const AdminTeachersPage: React.FC = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullName.trim() || !formData.phone.trim() || !formData.subject.trim()) {
-      setFormError('Iltimos, ism, telefon va fanni to\'ldiring.');
+    if (!formData.fullName.trim() || !formData.phone.trim() || formData.subjects.length === 0) {
+      setFormError('Iltimos, ism, telefon va kamida bitta fanni tanlang.');
       return;
     }
 
@@ -90,14 +100,14 @@ export const AdminTeachersPage: React.FC = () => {
         await api.put(`/admin/teachers/${editingTeacher.id}`, {
           fullName: formData.fullName.trim(),
           phone: formData.phone.trim(),
-          subject: formData.subject.trim(),
+          subject: formData.subjects.join(', '),
           password: formData.password ? formData.password.trim() : undefined,
         });
       } else {
         await api.post('/admin/teachers', {
           fullName: formData.fullName.trim(),
           phone: formData.phone.trim(),
-          subject: formData.subject.trim(),
+          subject: formData.subjects.join(', '),
           login: formData.login.trim(),
           password: formData.password.trim(),
         });
@@ -147,10 +157,17 @@ export const AdminTeachersPage: React.FC = () => {
     {
       header: 'Fani',
       accessor: (t) => (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-black/5 dark:bg-white/5">
-          <BookOpen className="w-3.5 h-3.5 opacity-70" />
-          {t.subject}
-        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {t.subject.split(',').map(subject => subject.trim()).filter(Boolean).map(subject => (
+            <span
+              key={subject}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-black/5 px-2.5 py-1 text-xs font-semibold dark:bg-white/5"
+            >
+              <BookOpen className="h-3.5 w-3.5 opacity-70" />
+              {subject}
+            </span>
+          ))}
+        </div>
       ),
     },
     {
@@ -259,14 +276,39 @@ export const AdminTeachersPage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               required
             />
-            <Input
-              label="Mutaxassislik fani"
-              placeholder="Masalan: Matematika"
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-              required
-            />
           </div>
+
+          <fieldset className="space-y-2">
+            <legend className="pl-1 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+              Fanlar
+            </legend>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {subjectOptions.map(subject => {
+                const isSelected = formData.subjects.includes(subject);
+                return (
+                  <button
+                    key={subject}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => setFormData(current => ({
+                      ...current,
+                      subjects: isSelected
+                        ? current.subjects.filter(selected => selected !== subject)
+                        : [...current.subjects, subject],
+                    }))}
+                    className={`flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'neu-inset text-[var(--accent)]'
+                        : 'neu-button text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {subject}
+                    {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input

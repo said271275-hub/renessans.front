@@ -200,7 +200,7 @@ export const ManagerRatingPage: React.FC = () => {
           <Select
             label="Guruh bo'yicha saralash"
             value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
+            onValueChange={setSelectedGroup}
           >
             <option value="">Barcha guruhlar</option>
             {groups.map((g) => (

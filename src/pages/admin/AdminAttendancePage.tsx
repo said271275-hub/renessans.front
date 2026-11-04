@@ -5,7 +5,7 @@ import { Attendance, Group, Teacher } from '../../types';
 import { Table, Column } from '../../components/ui/Table';
 import { Card } from '../../components/ui/Card';
 import { Select } from '../../components/ui/Select';
-import { Input } from '../../components/ui/Input';
+import { DatePicker } from '../../components/ui/DatePicker';
 import { Badge } from '../../components/ui/Badge';
 
 export const AdminAttendancePage: React.FC = () => {
@@ -70,8 +70,7 @@ export const AdminAttendancePage: React.FC = () => {
     const kelmadi = attendances.filter(a => a.status === 'KELMADI').length;
     const kechikdi = attendances.filter(a => a.status === 'KECHIKDI').length;
     const sababli = attendances.filter(a => a.status === 'SABABLI').length;
-    const rate = total > 0 ? Math.round(((keldi + kechikdi) / total) * 100) : 0;
-    return { total, keldi, kelmadi, kechikdi, sababli, rate };
+    return { total, keldi, kelmadi, kechikdi, sababli };
   }, [attendances]);
 
   // Pagination
@@ -143,7 +142,7 @@ export const AdminAttendancePage: React.FC = () => {
           <Select
             label="Guruh bo'yicha"
             value={selectedGroup}
-            onChange={(e) => setSelectedGroup(e.target.value)}
+            onValueChange={setSelectedGroup}
           >
             <option value="">Barcha guruhlar</option>
             {groups.map((g) => (
@@ -156,7 +155,7 @@ export const AdminAttendancePage: React.FC = () => {
           <Select
             label="O'qituvchi bo'yicha"
             value={selectedTeacher}
-            onChange={(e) => setSelectedTeacher(e.target.value)}
+            onValueChange={setSelectedTeacher}
           >
             <option value="">Barcha o'qituvchilar</option>
             {teachers.map((t) => (
@@ -166,18 +165,16 @@ export const AdminAttendancePage: React.FC = () => {
             ))}
           </Select>
 
-          <Input
+          <DatePicker
             label="Boshlang'ich sana"
-            type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={setStartDate}
           />
 
-          <Input
+          <DatePicker
             label="Tugash sanasi"
-            type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={setEndDate}
           />
         </div>
       </Card>

@@ -13,7 +13,6 @@ interface TeacherProfileResponse {
   stats: {
     totalGroups: number;
     totalStudents: number;
-    averageAttendance: number;
     averageGrade: number;
     totalGradesGiven: number;
   };
@@ -24,6 +23,12 @@ export const TeacherDashboardPage: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const todayDay = new Date().getDay();
+  const todayScheduleType = [1, 3, 5].includes(todayDay)
+    ? 'ODD'
+    : [2, 4, 6].includes(todayDay)
+      ? 'EVEN'
+      : null;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,8 +53,7 @@ export const TeacherDashboardPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-          <Skeleton className="h-32" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -100,7 +104,7 @@ export const TeacherDashboardPage: React.FC = () => {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           title="Biriktirilgan Guruhlar"
           value={profileData?.stats.totalGroups || 0}
@@ -112,12 +116,6 @@ export const TeacherDashboardPage: React.FC = () => {
           value={profileData?.stats.totalStudents || 0}
           icon={<Users className="w-6 h-6" />}
           subtitle="Guruhlaringizdagi shogirdlar"
-        />
-        <StatCard
-          title="O'rtacha Davomat"
-          value={`${profileData?.stats.averageAttendance || 0}%`}
-          icon={<CalendarCheck className="w-6 h-6" />}
-          subtitle="Darslarga qatnashish ko'rsatkichi"
         />
         <StatCard
           title="O'rtacha Baho"
@@ -152,6 +150,12 @@ export const TeacherDashboardPage: React.FC = () => {
                   <h4 className="font-bold text-base text-[var(--text-primary)]">{group.name}</h4>
                   <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mt-1 font-medium">
                     <Clock className="w-3.5 h-3.5" /> {group.schedule}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-[var(--text-secondary)]">
+                    Bugungi davomat:{' '}
+                    {todayScheduleType === group.scheduleType
+                      ? `${group.attendanceToday?.percentage ?? 0}% (${group.attendanceToday?.presentStudents ?? 0}/${group.attendanceToday?.totalStudents ?? group.students?.length ?? 0})`
+                      : 'bugun dars yo\'q'}
                   </p>
                 </div>
               </div>

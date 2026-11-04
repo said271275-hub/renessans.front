@@ -1,13 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCheck, Save, Calendar, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { CheckCheck, Save, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { api } from '../../api/client';
-import { Group, Student, Attendance, AttendanceStatus } from '../../types';
+import { Group, Attendance, AttendanceStatus } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
-import { Input } from '../../components/ui/Input';
-import { Badge } from '../../components/ui/Badge';
+import { DatePicker, getLocalDateString } from '../../components/ui/DatePicker';
+
+const getScheduleTypeForDate = (date: string): 'ODD' | 'EVEN' | null => {
+  if (!date) return null;
+  const [year, month, day] = date.split('-').map(Number);
+  const weekday = new Date(year, month - 1, day).getDay();
+  if ([1, 3, 5].includes(weekday)) return 'ODD';
+  if ([2, 4, 6].includes(weekday)) return 'EVEN';
+  return null;
+};
 
 export const TeacherAttendancePage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -15,16 +23,25 @@ export const TeacherAttendancePage: React.FC = () => {
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>(initialGroupId);
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString(new Date()));
+  const selectedScheduleType = getScheduleTypeForDate(selectedDate);
 
-  const [students, setStudents] = useState<Student[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Record<number, AttendanceStatus>>({});
+  const [isGroupsLoading, setIsGroupsLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const availableGroups = useMemo(
+    () => groups.filter(group => selectedScheduleType !== null && group.scheduleType === selectedScheduleType),
+    [groups, selectedScheduleType],
+  );
+  const students = useMemo(
+    () => groups
+      .find(group => group.id === Number(selectedGroupId))
+      ?.students?.filter(student => student.groupId === Number(selectedGroupId)) ?? [],
+    [groups, selectedGroupId],
+  );
 
   // 1. Fetch Teacher's groups
   useEffect(() => {
@@ -32,19 +49,32 @@ export const TeacherAttendancePage: React.FC = () => {
       try {
         const data = await api.get<Group[]>('/teacher/groups');
         setGroups(data);
-        if (data.length > 0 && !selectedGroupId) {
-          setSelectedGroupId(String(data[0].id));
-        }
       } catch (err) {
         console.error(err);
+      } finally {
+        setIsGroupsLoading(false);
       }
     };
     fetchGroups();
   }, []);
 
+  useEffect(() => {
+    if (isGroupsLoading) return;
+    if (availableGroups.some(group => String(group.id) === selectedGroupId)) return;
+    setSelectedGroupId(String(availableGroups[0]?.id ?? ''));
+  }, [availableGroups, isGroupsLoading, selectedGroupId]);
+
   // 2. When selectedGroupId or selectedDate changes, fetch group students & existing attendance
   useEffect(() => {
-    if (!selectedGroupId || !selectedDate) return;
+    if (
+      !selectedGroupId ||
+      !selectedDate ||
+      !availableGroups.some(group => String(group.id) === selectedGroupId)
+    ) {
+      setAttendanceMap({});
+      setIsLoading(false);
+      return;
+    }
 
     const fetchAttendanceData = async () => {
       try {
@@ -54,8 +84,9 @@ export const TeacherAttendancePage: React.FC = () => {
 
         // Find selected group from state or refetch
         const currentGroup = groups.find((g) => g.id === Number(selectedGroupId));
-        const groupStudents = currentGroup?.students || [];
-        setStudents(groupStudents);
+        const groupStudents = currentGroup?.students?.filter(
+          student => student.groupId === Number(selectedGroupId),
+        ) || [];
 
         // Fetch existing attendance records for this group & date
         const existingRecords = await api.get<Attendance[]>('/teacher/attendance', {
@@ -79,7 +110,7 @@ export const TeacherAttendancePage: React.FC = () => {
     };
 
     fetchAttendanceData();
-  }, [selectedGroupId, selectedDate, groups]);
+  }, [selectedGroupId, selectedDate, groups, availableGroups]);
 
   // Set single student status
   const handleStatusChange = (studentId: number, status: AttendanceStatus) => {
@@ -93,26 +124,33 @@ export const TeacherAttendancePage: React.FC = () => {
   // "Hammasini keldi deb belgilash"
   const markAllAsPresent = () => {
     const updatedMap: Record<number, AttendanceStatus> = {};
-    students.forEach((s) => {
-      updatedMap[s.id] = 'KELDI';
-    });
+    students.forEach(student => { updatedMap[student.id] = 'KELDI'; });
     setAttendanceMap(updatedMap);
     setSuccessMessage('Barcha o\'quvchilar "Keldi" deb belgilandi. Saqlash tugmasini bosing.');
   };
 
+  const markAllAsAbsent = () => {
+    const updatedMap: Record<number, AttendanceStatus> = {};
+    students.forEach(student => { updatedMap[student.id] = 'KELMADI'; });
+    setAttendanceMap(updatedMap);
+    setSuccessMessage('Barcha o\'quvchilar "Kelmadi" deb belgilandi. Saqlash tugmasini bosing.');
+  };
+
   // Save Attendance to Backend
   const handleSaveAttendance = async () => {
-    if (!selectedGroupId || !selectedDate) return;
+    if (!selectedGroupId || !selectedDate || isLoading) return;
 
     try {
       setIsSaving(true);
       setSuccessMessage(null);
       setErrorMessage(null);
 
-      const records = students.map((s) => ({
-        studentId: s.id,
-        status: attendanceMap[s.id] || 'KELDI',
-      }));
+      const records = students
+        .filter(student => student.groupId === Number(selectedGroupId))
+        .map(student => ({
+          studentId: student.id,
+          status: attendanceMap[student.id] || 'KELDI',
+        }));
 
       await api.post('/teacher/attendance', {
         groupId: Number(selectedGroupId),
@@ -157,7 +195,7 @@ export const TeacherAttendancePage: React.FC = () => {
             type="button"
             variant="default"
             onClick={markAllAsPresent}
-            disabled={students.length === 0}
+            disabled={students.length === 0 || isLoading}
             icon={<CheckCheck className="w-4 h-4 text-emerald-600" />}
             className="shadow-[var(--shadow-raised-sm)]"
           >
@@ -165,10 +203,20 @@ export const TeacherAttendancePage: React.FC = () => {
           </Button>
           <Button
             type="button"
+            variant="default"
+            onClick={markAllAsAbsent}
+            disabled={students.length === 0 || isLoading}
+            icon={<XCircle className="w-4 h-4 text-rose-600" />}
+            className="shadow-[var(--shadow-raised-sm)]"
+          >
+            Hammasini kelmadi deb belgilash
+          </Button>
+          <Button
+            type="button"
             variant="primary"
             onClick={handleSaveAttendance}
             isLoading={isSaving}
-            disabled={students.length === 0}
+            disabled={students.length === 0 || isLoading}
             icon={<Save className="w-4 h-4" />}
             className="shadow-[var(--shadow-raised)]"
           >
@@ -190,6 +238,11 @@ export const TeacherAttendancePage: React.FC = () => {
           {errorMessage}
         </div>
       )}
+      {!isGroupsLoading && availableGroups.length === 0 && (
+        <div className="rounded-2xl neu-inset p-4 text-sm font-semibold text-[var(--text-secondary)]">
+          Tanlangan sana haftasiga mos guruhlar mavjud emas.
+        </div>
+      )}
 
       {/* Group & Date Selection Card */}
       <Card variant="raised-sm" className="p-4">
@@ -197,20 +250,27 @@ export const TeacherAttendancePage: React.FC = () => {
           <Select
             label="Guruhni tanlang"
             value={selectedGroupId}
-            onChange={(e) => setSelectedGroupId(e.target.value)}
+            onValueChange={(groupId) => {
+              setSelectedGroupId(groupId);
+              setAttendanceMap({});
+              setIsLoading(true);
+            }}
           >
-            {groups.map((g) => (
+            {availableGroups.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name} ({g.students?.length || 0} o'quvchi)
               </option>
             ))}
           </Select>
 
-          <Input
+          <DatePicker
             label="Dars sanasi"
-            type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(date) => {
+              setSelectedDate(date);
+              setAttendanceMap({});
+              setIsLoading(true);
+            }}
           />
 
           <div className="flex flex-col justify-end">
@@ -236,7 +296,11 @@ export const TeacherAttendancePage: React.FC = () => {
       <Card variant="raised" className="p-0 overflow-hidden">
         {students.length === 0 ? (
           <div className="py-12 text-center text-[var(--text-muted)]">
-            <p className="text-sm font-medium">Ushbu guruhda o'quvchilar mavjud emas.</p>
+            <p className="text-sm font-medium">
+              {selectedGroupId
+                ? "Ushbu guruhda o'quvchilar mavjud emas."
+                : 'Davomat uchun guruh tanlanmagan.'}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-[var(--border-subtle)]">

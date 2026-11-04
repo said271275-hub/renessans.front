@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, GraduationCap, Layers, CalendarCheck, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Users, GraduationCap, Layers, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { api } from '../../api/client';
 import { DashboardStats } from '../../types';
 import { StatCard } from '../../components/ui/StatCard';
@@ -29,8 +29,8 @@ export const AdminDashboardPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
@@ -42,7 +42,7 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           title="Jami O'quvchilar"
           value={stats?.studentsCount || 0}
@@ -61,17 +61,59 @@ export const AdminDashboardPage: React.FC = () => {
           icon={<Layers className="w-6 h-6" />}
           subtitle="Faol dars guruhlari"
         />
-        <StatCard
-          title="Bugungi davomat"
-          value={`${stats?.attendancePercentage || 0}%`}
-          icon={<CalendarCheck className="w-6 h-6" />}
-          subtitle="Kelgan va kechikkanlar nisbati"
-          trend={{
-            value: `${stats?.statusCounts.keldi || 0} nafar o'quvchi keldi`,
-            isPositive: (stats?.attendancePercentage || 0) >= 70,
-          }}
-        />
       </div>
+
+      <Card variant="raised">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="font-bold text-base">Bugungi guruhlar davomati</h3>
+            <p className="text-xs text-[var(--text-secondary)]">
+              {stats?.todayScheduleType === 'ODD'
+                ? 'Toq kunlar — dushanba, chorshanba va juma'
+                : stats?.todayScheduleType === 'EVEN'
+                  ? 'Juft kunlar — seshanba, payshanba va shanba'
+                  : 'Yakshanba kuni darslar rejalashtirilmagan'}
+            </p>
+          </div>
+          {stats?.todayScheduleType && (
+            <span className="rounded-xl bg-[var(--accent)]/10 px-3 py-1.5 text-xs font-bold text-[var(--accent)]">
+              {stats.todayScheduleType === 'ODD' ? 'Toq kunlar' : 'Juft kunlar'}
+            </span>
+          )}
+        </div>
+        {stats?.groupAttendance.length ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {stats.groupAttendance.map(group => (
+              <div key={group.groupId} className="neu-inset rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold">{group.name}</p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                      {group.presentStudents} / {group.totalStudents} o'quvchi qatnashdi
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-lg font-extrabold text-[var(--accent)]">
+                    {group.percentage}%
+                  </span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-[var(--accent)] transition-all"
+                    style={{ width: `${group.percentage}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+                  Davomat qayd etildi: {group.markedStudents} / {group.totalStudents}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl neu-inset py-6 text-center text-sm text-[var(--text-muted)]">
+            Bugungi jadval bo'yicha guruhlar mavjud emas
+          </p>
+        )}
+      </Card>
 
       {/* Today Attendance Breakdown */}
       <Card variant="raised">

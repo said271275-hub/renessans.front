@@ -51,12 +51,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const setDemoAccount = (u: string, p: string) => {
-    setLoginInput(u);
-    setPassword(p);
-    setError(null);
-  };
-
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-[var(--bg-color)] text-[var(--text-primary)] relative">
       {/* Top right theme toggle */}
@@ -67,10 +61,10 @@ export const LoginPage: React.FC = () => {
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 mx-auto rounded-3xl neu-raised flex items-center justify-center text-[var(--accent)] font-black shadow-[var(--shadow-raised)] border border-[var(--border-subtle)]">
+          <div className="w-16 h-16 mx-auto rounded-3xl neu-raised flex items-center justify-center text-[var(--accent)] dark:text-[#D4AF37] font-black shadow-[var(--shadow-raised)] border border-[var(--border-subtle)]">
             <BookOpen className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight dark:text-[#D4AF37]">
             RENESANS LMS
           </h1>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-medium">
@@ -135,35 +129,6 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          {/* Demo test accounts for instant evaluator convenience */}
-          <div className="mt-8 pt-5 border-t border-[var(--border-subtle)]">
-            <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 text-center">
-              Sinov uchun tezkor hisoblar:
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setDemoAccount('admin', 'admin123')}
-                className="p-2 text-xs font-semibold rounded-xl neu-button text-purple-700 dark:text-purple-300"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoAccount('manager', 'manager123')}
-                className="p-2 text-xs font-semibold rounded-xl neu-button text-indigo-700 dark:text-indigo-300"
-              >
-                Menejer
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoAccount('rustam_math', 'teacher123')}
-                className="p-2 text-xs font-semibold rounded-xl neu-button text-teal-700 dark:text-teal-300"
-              >
-                O'qituvchi
-              </button>
-            </div>
-          </div>
         </Card>
       </div>
     </div>

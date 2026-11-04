@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Award, Star, CheckCircle2, AlertCircle, Plus, Send, History } from 'lucide-react';
+import { Award, Star, CheckCircle2, AlertCircle, Send, History } from 'lucide-react';
 import { api } from '../../api/client';
 import { Group, Student, Grade } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
+import { DatePicker, getLocalDateString } from '../../components/ui/DatePicker';
 import { Table, Column } from '../../components/ui/Table';
 
 export const TeacherGradingPage: React.FC = () => {
@@ -17,11 +18,8 @@ export const TeacherGradingPage: React.FC = () => {
   const [selectedGroupId, setSelectedGroupId] = useState<string>(initialGroupId);
   const [students, setStudents] = useState<Student[]>([]);
 
-  // Grade Form State
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  const [score, setScore] = useState<string>('90');
-  const [comment, setComment] = useState<string>('Darsda juda faol qatnashdi');
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [gradeEntries, setGradeEntries] = useState<Record<number, { score: string; comment: string }>>({});
+  const [date, setDate] = useState<string>(getLocalDateString(new Date()));
 
   const [gradesHistory, setGradesHistory] = useState<Grade[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,15 +45,10 @@ export const TeacherGradingPage: React.FC = () => {
 
   // Update students when group changes
   useEffect(() => {
-    if (!selectedGroupId) return;
     const currentGroup = groups.find((g) => g.id === Number(selectedGroupId));
-    const groupStudents = currentGroup?.students || [];
+    const groupStudents = currentGroup?.students?.filter(student => student.groupId === currentGroup.id) || [];
     setStudents(groupStudents);
-    if (groupStudents.length > 0) {
-      setSelectedStudentId(String(groupStudents[0].id));
-    } else {
-      setSelectedStudentId('');
-    }
+    setGradeEntries({});
   }, [selectedGroupId, groups]);
 
   // Fetch Teacher's recent grades
@@ -77,14 +70,35 @@ export const TeacherGradingPage: React.FC = () => {
 
   const handleGradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudentId || !score || !date) {
-      setErrorMessage('Iltimos, o\'quvchi, baho va sanani to\'ldiring.');
+    if (!selectedGroupId || !date || students.length === 0) {
+      setErrorMessage('Iltimos, guruh, o\'quvchilar va sanani tanlang.');
       return;
     }
 
-    const numScore = Number(score);
-    if (isNaN(numScore) || numScore < 1 || numScore > 100) {
-      setErrorMessage('Baho 1 dan 100 gacha bo\'lishi kerak.');
+    const invalidStudent = students.find(student => {
+      const score = gradeEntries[student.id]?.score.trim();
+      return score !== undefined && score !== '' &&
+        (!Number.isInteger(Number(score)) || Number(score) < 1 || Number(score) > 100);
+    });
+    if (invalidStudent) {
+      setErrorMessage(`${invalidStudent.fullName} uchun baho 1 dan 100 gacha butun son bo'lishi kerak.`);
+      return;
+    }
+
+    const grades = students.flatMap(student => {
+      const entry = gradeEntries[student.id];
+      const score = entry?.score.trim();
+      if (!score) return [];
+      return [{
+        studentId: student.id,
+        score: Number(score),
+        comment: entry.comment.trim(),
+      }];
+    });
+
+    if (grades.length === 0) {
+      setErrorMessage(null);
+      setSuccessMessage('Baho kiritilmagani uchun barcha bo\'sh baholar o\'tkazib yuborildi.');
       return;
     }
 
@@ -93,18 +107,19 @@ export const TeacherGradingPage: React.FC = () => {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      await api.post('/teacher/grades', {
-        studentId: Number(selectedStudentId),
-        score: numScore,
-        comment: comment.trim(),
+      await api.post('/teacher/grades/bulk', {
+        groupId: Number(selectedGroupId),
         date,
+        grades,
       });
 
-      setSuccessMessage('Baho muvaffaqiyatli saqlandi va o\'quvchi reytingiga qo\'shildi!');
+      const skippedCount = students.length - grades.length;
+      setSuccessMessage(
+        `${grades.length} ta baho saqlandi.${skippedCount > 0 ? ` ${skippedCount} ta bo'sh baho o'tkazib yuborildi.` : ''}`,
+      );
+      setGradeEntries({});
       setTimeout(() => setSuccessMessage(null), 4000);
-
-      // Refresh history
-      fetchGradesHistory();
+      await fetchGradesHistory();
     } catch (err: any) {
       setErrorMessage(err.message || 'Bahoni saqlashda xatolik yuz berdi.');
     } finally {
@@ -170,14 +185,19 @@ export const TeacherGradingPage: React.FC = () => {
         <form onSubmit={handleGradeSubmit} className="space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-[var(--border-subtle)]">
             <Award className="w-5 h-5 text-[var(--accent)]" />
-            <h3 className="font-bold text-base">Yangi baho qo'yish</h3>
+            <h3 className="font-bold text-base">Guruhni baholash</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
-              label="1. Guruhni tanlang"
+              label="Guruhni tanlang"
               value={selectedGroupId}
-              onChange={(e) => setSelectedGroupId(e.target.value)}
+              onValueChange={groupId => {
+                setSelectedGroupId(groupId);
+                setGradeEntries({});
+                setErrorMessage(null);
+                setSuccessMessage(null);
+              }}
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
@@ -186,49 +206,65 @@ export const TeacherGradingPage: React.FC = () => {
               ))}
             </Select>
 
-            <Select
-              label="2. O'quvchini tanlang"
-              value={selectedStudentId}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              disabled={students.length === 0}
-            >
-              {students.length === 0 ? (
-                <option value="">O'quvchilar yo'q</option>
-              ) : (
-                students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.fullName}
-                  </option>
-                ))
-              )}
-            </Select>
-
-            <Input
-              label="3. Baho (1 - 100 ball)"
-              type="number"
-              min={1}
-              max={100}
-              placeholder="Masalan: 95"
-              value={score}
-              onChange={(e) => setScore(e.target.value)}
-              required
-            />
-
-            <Input
-              label="4. Dars sanasi"
-              type="date"
+            <DatePicker
+              label="Dars sanasi"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
               required
             />
           </div>
 
-          <Input
-            label="O'qituvchi izohi / Sharhi"
-            placeholder="Masalan: Mavzuni a'lo darajada o'zlashtirdi va barcha topshiriqlarni mustaqil bajardi"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
+          <p className="text-xs text-[var(--text-secondary)]">
+            Baho kiritilmagan o'quvchilar saqlash vaqtida o'tkazib yuboriladi.
+          </p>
+
+          <div className="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+            {students.length === 0 ? (
+              <p className="rounded-xl neu-inset p-4 text-sm text-[var(--text-muted)]">
+                Tanlangan guruhda o'quvchilar mavjud emas.
+              </p>
+            ) : students.map(student => (
+              <div
+                key={student.id}
+                className="grid grid-cols-1 gap-3 rounded-2xl neu-inset p-4 md:grid-cols-[minmax(0,1.2fr)_9rem_minmax(0,1.8fr)] md:items-center"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-[var(--text-primary)]">
+                    {student.fullName}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">{student.phone}</p>
+                </div>
+                <Input
+                  label="Baho (1-100)"
+                  type="number"
+                  min={1}
+                  max={100}
+                  step={1}
+                  placeholder="Bo'sh qoldirish mumkin"
+                  value={gradeEntries[student.id]?.score ?? ''}
+                  onChange={event => setGradeEntries(current => ({
+                    ...current,
+                    [student.id]: {
+                      ...(current[student.id] ?? { score: '', comment: '' }),
+                      score: event.target.value,
+                    },
+                  }))}
+                />
+                <Input
+                  label="Izoh (ixtiyoriy)"
+                  placeholder="Izoh kiriting"
+                  value={gradeEntries[student.id]?.comment ?? ''}
+                  onChange={event => setGradeEntries(current => ({
+                    ...current,
+                    [student.id]: {
+                      ...(current[student.id] ?? { score: '', comment: '' }),
+                      comment: event.target.value,
+                    },
+                  }))}
+                />
+              </div>
+            ))}
+          </div>
 
           <div className="flex justify-end pt-2">
             <Button
@@ -240,7 +276,7 @@ export const TeacherGradingPage: React.FC = () => {
               icon={<Send className="w-4 h-4" />}
               className="shadow-[var(--shadow-raised)]"
             >
-              Bahoni kiritish va saqlash
+              Baholarni saqlash
             </Button>
           </div>
         </form>

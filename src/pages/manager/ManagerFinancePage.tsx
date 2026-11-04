@@ -18,6 +18,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { Card } from '../../components/ui/Card';
+import { DatePicker, getLocalDateString } from '../../components/ui/DatePicker';
 
 export const ManagerFinancePage: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -44,7 +45,7 @@ export const ManagerFinancePage: React.FC = () => {
     type: 'INCOME',
     category: 'O\'quvchi to\'lovi',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDateString(new Date()),
     note: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export const ManagerFinancePage: React.FC = () => {
       type: 'INCOME',
       category: 'O\'quvchi to\'lovi',
       amount: '',
-      date: new Date().toISOString().split('T')[0],
+      date: getLocalDateString(new Date()),
       note: '',
     });
     setFormError(null);
@@ -345,25 +346,23 @@ export const ManagerFinancePage: React.FC = () => {
           <Select
             label="Tranzaksiya turi"
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
+            onValueChange={setFilterType}
           >
             <option value="">Barchasi (Kirim va Chiqim)</option>
             <option value="INCOME">Faqat Kirim</option>
             <option value="EXPENSE">Faqat Chiqim</option>
           </Select>
 
-          <Input
+          <DatePicker
             label="Boshlang'ich sana"
-            type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={setStartDate}
           />
 
-          <Input
+          <DatePicker
             label="Tugash sanasi"
-            type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={setEndDate}
           />
         </div>
       </Card>
@@ -398,8 +397,7 @@ export const ManagerFinancePage: React.FC = () => {
             <Select
               label="Amal turi"
               value={formData.type}
-              onChange={(e) => {
-                const newType = e.target.value;
+              onValueChange={(newType) => {
                 setFormData({
                   ...formData,
                   type: newType,
@@ -414,7 +412,7 @@ export const ManagerFinancePage: React.FC = () => {
             <Select
               label="Kategoriya"
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              onValueChange={(category) => setFormData({ ...formData, category })}
             >
               {formData.type === 'INCOME' ? (
                 <>
@@ -445,11 +443,10 @@ export const ManagerFinancePage: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               required
             />
-            <Input
+            <DatePicker
               label="Sana"
-              type="date"
               value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              onChange={(date) => setFormData({ ...formData, date })}
               required
             />
           </div>

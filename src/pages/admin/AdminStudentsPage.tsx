@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { Card } from '../../components/ui/Card';
+import { DatePicker } from '../../components/ui/DatePicker';
 
 export const AdminStudentsPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -248,7 +249,7 @@ export const AdminStudentsPage: React.FC = () => {
           />
           <Select
             value={selectedGroupFilter}
-            onChange={(e) => setSelectedGroupFilter(e.target.value)}
+            onValueChange={setSelectedGroupFilter}
           >
             <option value="">Barcha guruhlar</option>
             {groups.map((g) => (
@@ -312,17 +313,16 @@ export const AdminStudentsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
+            <DatePicker
               label="Tug'ilgan sana"
-              type="date"
               value={formData.birthDate}
-              onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+              onChange={(birthDate) => setFormData({ ...formData, birthDate })}
               required
             />
             <Select
               label="Guruh"
               value={formData.groupId}
-              onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
+              onValueChange={(groupId) => setFormData({ ...formData, groupId })}
             >
               <option value="">Guruhsiz</option>
               {groups.map((g) => (

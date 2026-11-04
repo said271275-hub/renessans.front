@@ -28,6 +28,7 @@ export const AdminGroupsPage: React.FC = () => {
     name: '',
     teacherId: '',
     schedule: '',
+    scheduleType: 'ODD' as 'ODD' | 'EVEN',
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +59,7 @@ export const AdminGroupsPage: React.FC = () => {
       name: '',
       teacherId: teachers[0]?.id ? String(teachers[0].id) : '',
       schedule: 'Dush-Chor-Jum 14:00 - 16:00',
+      scheduleType: 'ODD',
     });
     setFormError(null);
     setIsModalOpen(true);
@@ -69,6 +71,7 @@ export const AdminGroupsPage: React.FC = () => {
       name: group.name,
       teacherId: group.teacherId ? String(group.teacherId) : '',
       schedule: group.schedule,
+      scheduleType: group.scheduleType || 'ODD',
     });
     setFormError(null);
     setIsModalOpen(true);
@@ -89,6 +92,7 @@ export const AdminGroupsPage: React.FC = () => {
         name: formData.name.trim(),
         teacherId: formData.teacherId ? Number(formData.teacherId) : null,
         schedule: formData.schedule.trim(),
+        scheduleType: formData.scheduleType,
       };
 
       if (editingGroup) {
@@ -133,6 +137,9 @@ export const AdminGroupsPage: React.FC = () => {
             <p className="font-bold text-sm text-[var(--text-primary)]">{g.name}</p>
             <p className="text-xs text-[var(--text-muted)] flex items-center gap-1">
               <Clock className="w-3 h-3" /> {g.schedule}
+            </p>
+            <p className="text-[11px] font-semibold text-[var(--accent)]">
+              {g.scheduleType === 'EVEN' ? 'Juft kunlar' : 'Toq kunlar'}
             </p>
           </div>
         </div>
@@ -250,7 +257,7 @@ export const AdminGroupsPage: React.FC = () => {
           <Select
             label="O'qituvchi"
             value={formData.teacherId}
-            onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
+            onValueChange={(teacherId) => setFormData({ ...formData, teacherId })}
           >
             <option value="">O'qituvchi tanlanmagan</option>
             {teachers.map((t) => (
@@ -266,6 +273,18 @@ export const AdminGroupsPage: React.FC = () => {
             value={formData.schedule}
             onChange={(e) => setFormData({ ...formData, schedule: e.target.value })}
             required
+          />
+
+          <Select
+            label="Hafta kunlari turi"
+            value={formData.scheduleType}
+            onValueChange={(scheduleType) =>
+              setFormData({ ...formData, scheduleType: scheduleType === 'EVEN' ? 'EVEN' : 'ODD' })
+            }
+            options={[
+              { value: 'ODD', label: 'Toq kunlar (Dushanba, Chorshanba, Juma)' },
+              { value: 'EVEN', label: 'Juft kunlar (Seshanba, Payshanba, Shanba)' },
+            ]}
           />
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">

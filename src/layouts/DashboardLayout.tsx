@@ -13,6 +13,7 @@ import {
   Menu,
   X,
   BookOpen,
+  ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
@@ -62,6 +63,21 @@ export const DashboardLayout: React.FC = () => {
     item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
   );
   const pageTitle = currentNav?.label || 'Boshqaruv Paneli';
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const roleBasePath = `/${pathParts[0]}`;
+  const isNestedPage = pathParts.length > 1;
+  const backFallback = pathParts.length > 2
+    ? `${roleBasePath}/${pathParts[1]}`
+    : roleBasePath;
+
+  const goBack = () => {
+    const historyState = window.history.state as { idx?: number } | null;
+    if (typeof historyState?.idx === 'number' && historyState.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate(backFallback);
+    }
+  };
 
   const closeMobile = () => setMobileMenuOpen(false);
 
@@ -85,11 +101,11 @@ export const DashboardLayout: React.FC = () => {
           {/* Logo & Brand */}
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl neu-inset flex items-center justify-center text-[var(--accent)] font-black text-xl">
+              <div className="w-11 h-11 rounded-2xl neu-inset flex items-center justify-center text-[var(--accent)] dark:text-[#D4AF37] font-black text-xl">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="font-extrabold text-lg tracking-tight leading-tight">RENESANS</h1>
+                <h1 className="font-extrabold text-lg tracking-tight leading-tight dark:text-[#D4AF37]">RENESANS</h1>
                 <p className="text-[11px] text-[var(--text-secondary)] font-medium">O'quv Markazi</p>
               </div>
             </div>
@@ -167,6 +183,9 @@ export const DashboardLayout: React.FC = () => {
               <Menu className="w-5 h-5" />
             </button>
             <div>
+              <p className="text-[10px] font-extrabold tracking-[0.18em] text-[var(--text-secondary)] dark:text-[#D4AF37]">
+                RENESANS
+              </p>
               <h2 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
                 {pageTitle}
               </h2>
@@ -174,6 +193,18 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3.5">
+            {isNestedPage && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={goBack}
+                icon={<ArrowLeft className="h-4 w-4" />}
+                aria-label="Orqaga"
+              >
+                Orqaga
+              </Button>
+            )}
             <ThemeToggle />
             <div className="hidden sm:flex items-center gap-2.5 pl-3 border-l border-[var(--border-subtle)]">
               <div className="text-right">
